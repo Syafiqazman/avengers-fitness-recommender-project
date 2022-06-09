@@ -1,0 +1,313 @@
+// DATA4200 Assessment #3
+// Avengers Fitness Programs
+
+// example patterns
+()
+(),()
+()--()
+p=()-[]-()
+
+// Show meta-graph
+CALL db.schema.visualization()
+
+// a simple pattern - find all avengers
+MATCH (a:Avengers)
+RETURN a
+
+// find iron man
+MATCH (a:Avengers)
+WHERE a.username = 'hulk'
+RETURN a
+
+// another way to find iron man
+MATCH (a:Avengers {username: 'iron man'})
+RETURN a
+
+// what are the eating goals of the avengers?
+MATCH (eg:EatingGoal),(a:Avengers) 
+WITH eg AS eats, a AS Avenger
+OPTIONAL MATCH (eats)-[]-(x) 
+RETURN eats, x, Avenger;
+
+MATCH (eg:EatingGoal)-[want:WANTS]-(a:Avengers) 
+WITH eg AS eats, a AS Avenger
+OPTIONAL MATCH (eats)-[]-(x) 
+RETURN eats, x, Avenger;
+
+// what do the Avengers VALUE?
+MATCH p=()-[r:VALUES]->() 
+RETURN p 
+LIMIT 25
+
+// importance:
+// eating goals
+// muscle group
+// workout goals
+// body area
+
+// what does iron man value?
+MATCH (a:Avengers {username: "iron man"})-[r:VALUES]->(x) 
+RETURN x.name, r.importance 
+ORDER BY r.importance DESC;
+
+MATCH (a:Avengers {username: "iron man"})-[r:WANTS|VALUES]->(x) 
+RETURN x.name, r.importance 
+ORDER BY r.importance DESC;
+
+// what does iron man want by Importance
+MATCH (u:Avengers {username: "iron man"})-[r:WANTS]->(x) 
+RETURN x.name, r.importance 
+ORDER BY r.importance DESC;
+
+MATCH (a:Avengers {username: "hulk"})-[r:WANTS|VALUES]->(x) 
+RETURN a,r,x
+
+MATCH (a:Avengers {username: "hulk"})-[r:WANTS|VALUES|PREFERS|IS_AT]->(x) 
+RETURN a,r,x
+
+MATCH (a:Avengers {username: "shuri"})-[r:WANTS|VALUES|PREFERS|IS_AT]->(x) 
+RETURN a,r,x
+
+// what about eating goals?
+MATCH (eg:EatingGoal) 
+WITH eg AS eats
+OPTIONAL MATCH (eats)-[]-(x) 
+RETURN eats, x;
+
+// === Personalization
+// The preferences an Avengers has are crucial to understanding enough about them to make informed recommendations.
+// Here we start with the Avengers "iron man" and traverse one level out to all the direct information 
+// we've collected through our interactions with this Avengers.
+
+// what are iron man's preferences?
+MATCH (a:Avengers {username: "iron man"}) 
+WITH a AS avenger
+MATCH (avenger)-[:IS_AT]->(wl:WorkoutLevel), (avenger)-[:PREFERS]->(wt:WorkoutType), (avenger)-[:VALUES]->(ba:BodyArea), (avenger)-[:WANTS]->(mg:MuscleGroup) 
+RETURN avenger, wl, wt, ba, mg;
+
+MATCH (a:Avengers {username: "hulk"}) 
+WITH a AS avenger
+MATCH (avenger)-[:IS_AT]->(wl:WorkoutLevel), (avenger)-[:PREFERS]->(wt:WorkoutType), (avenger)-[:VALUES]->(ba:BodyArea), (avenger)-[:WANTS]->(mg:MuscleGroup) 
+RETURN avenger, wl, wt, ba, mg;
+
+MATCH (a:Avengers {username: "shuri"}) 
+WITH a AS avenger
+MATCH (avenger)-[:IS_AT]->(wl:WorkoutLevel), (avenger)-[:PREFERS]->(wt:WorkoutType), (avenger)-[:VALUES]->(ba:BodyArea), (avenger)-[:WANTS]->(mg:MuscleGroup) 
+RETURN avenger, wl, wt, ba, mg;
+
+MATCH (a:Avengers {username: "okoye"}) 
+WITH a AS avenger
+MATCH (avenger)-[:IS_AT]->(wl:WorkoutLevel), (avenger)-[:PREFERS]->(wt:WorkoutType), (avenger)-[:VALUES]->(ba:BodyArea), (avenger)-[:WANTS]->(mg:MuscleGroup) 
+RETURN avenger, wl, wt, ba, mg;
+
+MATCH (a:Avengers {username: "okoye"}) 
+WITH a AS avenger
+MATCH (avenger)-[:IS_AT]->(wl:WorkoutLevel), 
+(avenger)-[:PREFERS]->(wt:WorkoutType), 
+(avenger)-[:VALUES]->(ba:BodyArea), 
+(avenger)-[:WANTS]->(mg:MuscleGroup),
+(avenger)-[:WANTS]->(eat:EatingGoal)
+RETURN avenger, wl, wt, ba, mg, eat;
+
+MATCH (a:Avengers {username: "shuri"})-[r:WANTS|VALUES|PREFERS|IS_AT]->(x) 
+RETURN a,r,x
+
+
+// === Product Cross-Selling
+// Here we look at which EatingGoals and WorkoutGoals would be considered 
+// parallel and from this could examine patterns about a Avengers where they do not have a direct connection.
+
+// what about similar goals?
+MATCH (eats:EatingGoal {name: "Performance"})-[]-(x)-[]-(workout:WorkoutGoal {name: "Fat Burning"}) 
+RETURN eats, x, workout;
+
+// Explore Parallel Eating and Workout Goals - Weight Loss
+MATCH (eg:EatingGoal {name: "Weight Loss"})-[]-(x)-[]-(wg:WorkoutGoal {name: "Weight Loss"}) 
+RETURN eg, x, wg;
+
+
+// Explore Parallel Eating and Workout Goals - Weight Loss/Get Healthy/Wellness
+MATCH (eg:EatingGoal)-[]-(x)-[]-(wg:WorkoutGoal {name: "Weight Loss"}) 
+WHERE eg.name = "Get Healthy" OR eg.name = "Wellness" 
+RETURN eg, x, wg;
+
+
+//additional queries
+MATCH (a:Avengers {username: "iron man"}) 
+WITH a AS avenger
+MATCH (avenger)-[:WANTS]->(eg:EatingGoal),
+(avenger)-[:WANTS]->(wg:WorkoutGoal {name: "Weight Loss"})
+RETURN avenger, eg, wg
+
+// generic query
+MATCH (a:Avengers {username: "iron man"}) 
+WITH a AS avenger
+MATCH (avenger)-[:WANTS]->(eg:EatingGoal),
+(avenger)-[:WANTS]->(wg:WorkoutGoal)
+RETURN avenger, eg, wg
+LIMIT 5
+
+//cover all eating goals and workout goals
+// will return results if they exist
+MATCH (a:Avengers {username: "okoye"}) 
+WITH a AS avenger
+MATCH (avenger)-[:WANTS]->(eg:EatingGoal),
+(avenger)-[:WANTS]->(wg:WorkoutGoal)
+WITH avenger, eg, wg
+WHERE eg.name = "Get Healthy" OR eg.name = "Wellness" OR eg.name = "Weight Loss" OR eg.name = "Performance" OR eg.name = "Muscle Enhancement"
+WITH avenger, eg, wg
+WHERE wg.name = "Weight Loss" OR wg.name = "Fat Burning" OR wg.name = "Lose Weight" OR wg.name  = "Get Fit"
+RETURN avenger, eg, wg
+
+//cover all eating goals and workout goals
+// will return results if they exist
+MATCH (a:Avengers {username: "doctor strange"}) 
+WITH a AS avenger
+MATCH (avenger)-[:WANTS]->(eg:EatingGoal),
+(avenger)-[:WANTS]->(wg:WorkoutGoal)
+WITH avenger, eg, wg
+WHERE eg.name = "Get Healthy" OR eg.name = "Wellness" OR eg.name = "Weight Loss" OR eg.name = "Performance" OR eg.name = "Muscle Enhancement"
+WITH avenger, eg, wg
+WHERE wg.name = "Weight Loss" OR wg.name = "Fat Burning" OR wg.name = "Lose Weight" OR wg.name  = "Get Fit"
+RETURN avenger, eg, wg
+
+MATCH (a:Avengers {username: "wasp"}) 
+WITH a AS avenger
+MATCH (avenger)-[:WANTS]->(eg:EatingGoal),
+(avenger)-[:WANTS]->(wg:WorkoutGoal)
+WITH avenger, eg, wg
+WHERE eg.name = "Get Healthy" OR eg.name = "Wellness" OR eg.name = "Weight Loss" OR eg.name = "Performance" OR eg.name = "Muscle Enhancement"
+WITH avenger, eg, wg
+WHERE wg.name = "Weight Loss" OR wg.name = "Fat Burning" OR wg.name = "Lose Weight" OR wg.name  = "Get Fit"
+RETURN avenger, eg, wg
+
+
+//== paths or connections to traverse
+MATCH p=shortestPath((avenger:Avengers)-[*]-(mates:Avengers))
+WHERE avenger.username = "black widow" AND mates.username = "hulk"
+RETURN p
+
+MATCH p=shortestPath((avenger:Avengers)-[*]-(mates:Avengers))
+WHERE avenger.username = "doctor strange" AND mates.username = "wasp"
+RETURN p
+
+MATCH p=()-[r:TARGETS]->() RETURN p LIMIT 25
+
+// === The Recommendations
+// We start simple by recommending a Avengers their top five fitness programs.
+
+
+// Recommend Avengers a Fitness Program
+MATCH (avenger:Avengers)
+// use iron man as an example 
+WHERE avenger.username = "doctor strange"
+// are there physical limitations? 
+OPTIONAL MATCH (avenger)-[:LIMITED_BY]->(limitations)
+WITH avenger, limitations
+// what does iron man prefer, values and wants?
+MATCH (avenger)-[r:IS_AT|PREFERS|WANTS|VALUES]->(x) 
+WITH avenger, limitations, x, coalesce(r.importance, 0.5) AS importance
+// find the fitness program but don't find 
+// one where there is a physical limitation
+MATCH (x)<-[]-(fit:FitnessProgram) WHERE NOT (fit)-[:LIMITED_BY]->(limitations)
+// build traits
+WITH avenger, fit, collect({name: x.name, weight: importance}) AS traits
+//calculate scores
+WITH avenger, fit, reduce(s = 0, t IN traits | s + t.weight) AS score
+WITH avenger, fit, score 
+OPTIONAL MATCH (fit)-[]->(x)<-[]-(avenger)
+RETURN fit, collect(x) AS x, avenger, score ORDER BY score DESC LIMIT 5
+
+
+
+MATCH (avenger:Avengers)
+// use iron man as an example 
+WHERE avenger.username = "hulk"
+// are there physical limitations? 
+OPTIONAL MATCH (avenger)-[:LIMITED_BY]->(limitations)
+WITH avenger, limitations
+// what does iron man prefer, values and wants?
+MATCH (avenger)-[r:IS_AT|PREFERS|WANTS|VALUES]->(x) 
+WITH avenger, limitations, x, coalesce(r.importance, 0.5) AS importance
+// find the fitness program but don't find 
+// one where there is a physical limitation
+MATCH (x)<-[]-(fit:FitnessProgram) WHERE NOT (fit)-[:LIMITED_BY]->(limitations)
+// build traits
+WITH avenger, fit, collect({name: x.name, weight: importance}) AS traits
+//calculate scores
+WITH avenger, fit, reduce(s = 0, t IN traits | s + t.weight) AS score
+WITH avenger, fit, score 
+OPTIONAL MATCH (fit)-[]->(x)<-[]-(avenger)
+RETURN fit, collect(x) AS x, avenger, score ORDER BY score DESC LIMIT 5
+
+MATCH (avenger:Avengers)
+// use iron man as an example 
+WHERE avenger.username = "wasp"
+// are there physical limitations? 
+OPTIONAL MATCH (avenger)-[:LIMITED_BY]->(limitations)
+WITH avenger, limitations
+// what does iron man prefer, values and wants?
+MATCH (avenger)-[r:IS_AT|PREFERS|WANTS|VALUES]->(x) 
+WITH avenger, limitations, x, coalesce(r.importance, 0.5) AS importance
+// find the fitness program but don't find 
+// one where there is a physical limitation
+MATCH (x)<-[]-(fit:FitnessProgram) WHERE NOT (fit)-[:LIMITED_BY]->(limitations)
+// build traits
+WITH avenger, fit, collect({name: x.name, weight: importance}) AS traits
+//calculate scores
+WITH avenger, fit, reduce(s = 0, t IN traits | s + t.weight) AS score
+WITH avenger, fit, score 
+OPTIONAL MATCH (fit)-[]->(x)<-[]-(avenger)
+RETURN fit, collect(x) AS x, avenger, score ORDER BY score DESC LIMIT 5
+
+
+// Recommend Avengers a blend of Fitness Programs and Nutrional Supplements
+MATCH (avenger:Avengers) WHERE avenger.username = "iron man" 
+OPTIONAL MATCH (avenger)-[:LIMITED_BY]->(limitations)
+WITH avenger, limitations
+MATCH (avenger)-[r:IS_AT|PREFERS|WANTS|VALUES]->(x) 
+WITH avenger, limitations, x, coalesce(r.importance, 0.5) AS importance
+// fitness programs or nutritional supplements
+MATCH (x)<-[]-(x2) WHERE (x2:FitnessProgram OR x2:NutritionalSupplement) AND NOT (x2)-[:LIMITED_BY]->(limitations)
+WITH avenger, x2, collect({name: x.name, weight: importance}) AS traits
+WITH avenger, x2, reduce(s = 0, t IN traits | s + t.weight) AS score
+WITH avenger, x2, score OPTIONAL MATCH (x2)-[]->(x)<-[]-(avenger)
+RETURN x2, collect(x) AS x, avenger, score ORDER BY score DESC LIMIT 5
+
+// Recommend Avengers a blend of Eating Goals and Nutrional Supplements
+MATCH (avenger:Avengers) WHERE avenger.username = "iron man"
+OPTIONAL MATCH (avenger)-[:LIMITED_BY]->(limitations)
+WITH avenger, limitations
+MATCH (avenger)-[r:IS_AT|PREFERS|WANTS|VALUES]->(x) 
+WITH avenger, limitations, x, coalesce(r.importance, 0.5) AS importance
+MATCH (x)<-[]-(x2) WHERE (x2:EatingGoal OR x2:NutritionalSupplement) AND NOT (x2)-[:LIMITED_BY]->(limitations)
+WITH avenger, x2, collect({name: x.name, weight: importance}) AS traits
+WITH avenger, x2, reduce(s = 0, t IN traits | s + t.weight) AS score
+WITH avenger, x2, score OPTIONAL MATCH (x2)-[]->(x)<-[]-(avenger)
+RETURN x2, collect(x) AS x, avenger, score ORDER BY score DESC LIMIT 5
+
+//== The Recommendations: Recommend Two Users do a Fitness Program Together
+// Here we makea few adjustments to recommend a FitnessProgram to a 
+// pair of Users that should experience it together.
+// The main adjustments here are to:
+
+
+// Recommend Two Users do a Fitness Program Together
+MATCH (avenger:Avengers) WHERE avenger.username = "doctor strange" 
+OPTIONAL MATCH (avenger)-[:LIMITED_BY]->(limitations)
+WITH avenger, limitations 
+MATCH (avenger)-[r:IS_AT|PREFERS|WANTS|VALUES]->(x) 
+WITH avenger, limitations, x, coalesce(r.importance, 0.5) AS importance
+// ensure that it is not iron man
+MATCH (x)<-[]-(mates) WHERE (mates:Avengers) AND NOT (mates)-[:LIMITED_BY]->(limitations) AND avenger <> mates
+WITH avenger, limitations, mates, collect({name: x.name, weight: importance}) AS traits
+WITH avenger, limitations, mates, reduce(s = 0, t IN traits | s + t.weight) AS score
+WITH avenger, limitations, mates, score 
+ORDER BY score DESC LIMIT 1
+WITH avenger, limitations, mates, score 
+OPTIONAL MATCH (mates)-[]->(x)<-[]-(avenger), (x)<-[r]-(fit:FitnessProgram) WHERE NOT (fit)-[:LIMITED_BY]->(limitations)
+WITH avenger, mates, score, collect(x) AS common, fit, collect({name: x.name, weight: coalesce(r.importance, 0.5)}) AS traits
+WITH avenger, mates, score, common, fit, reduce(s = 0, t IN traits | s + t.weight) AS score2
+RETURN avenger, mates, score, common, fit, score2 
+ORDER BY score2 DESC 
+LIMIT 3
